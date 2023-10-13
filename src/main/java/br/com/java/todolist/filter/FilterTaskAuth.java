@@ -23,28 +23,35 @@ public class FilterTaskAuth extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
-    // pegar autenticacao do usuario e converter
-    var auth = request.getHeader("Authorization");
-    var authEncoded = auth.substring("Basic".length()).trim();
 
-    byte[] authDecode = Base64.getDecoder().decode(authEncoded);
-    var authString = new String(authDecode);
-    String[] credentials = authString.split(":");
-    String username = credentials[0];
-    String password = credentials[1];
+    var servletPath = request.getServletPath();
 
-    // validar usuario
-    var isUser = this.userRepository.findByUsername(username);
-    if (isUser == null) {
-      response.sendError(401);
-    } else {
-      // validar senha
-      var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), isUser.getPassword());
-      if (passwordVerify.verified) {
-        filterChain.doFilter(request, response);
-      }else{
+    if (servletPath.equals("/tasks/")) {
+      // pegar autenticacao do usuario e converter
+      var auth = request.getHeader("Authorization");
+      var authEncoded = auth.substring("Basic".length()).trim();
+
+      byte[] authDecode = Base64.getDecoder().decode(authEncoded);
+      var authString = new String(authDecode);
+      String[] credentials = authString.split(":");
+      String username = credentials[0];
+      String password = credentials[1];
+
+      // validar usuario
+      var isUser = this.userRepository.findByUsername(username);
+      if (isUser == null) {
         response.sendError(401);
+      } else {
+        // validar senha
+        var passwordVerify = BCrypt.verifyer().verify(password.toCharArray(), isUser.getPassword());
+        if (passwordVerify.verified) {
+          filterChain.doFilter(request, response);
+        } else {
+          response.sendError(401);
+        }
       }
+    } else {
+      filterChain.doFilter(request, response);
     }
 
   }
